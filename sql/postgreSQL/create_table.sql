@@ -4,8 +4,8 @@ CREATE TABLE wallet_tab (
     balance INTEGER NOT NULL DEFAULT 0,
     frozen_balance INTEGER NOT NULL DEFAULT 0,
     ext_info VARCHAR(50) NOT NULL,
-    created_time BIGINT NOT NULL ,
-    updated_time BIGINT NOT NULL
+    create_time BIGINT NOT NULL ,
+    update_time BIGINT NOT NULL
 );
 -------------------------------------------------------------
 CREATE TABLE transaction_tab (
@@ -16,7 +16,7 @@ CREATE TABLE transaction_tab (
     status INTEGER DEFAULT 0, -- pending:0, complete:1, failed:2, canceled 3;
     user_id INTEGER NOT NULL,
     oppo_user_id INTEGER NOT NULL DEFAULT 0,
-    created_time BIGINT NOT NULL,
+    create_time BIGINT NOT NULL,
     update_time BIGINT NOT NULL,
     last_process_time BIGINT NOT NULL
 );

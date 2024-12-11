@@ -2,10 +2,9 @@ package config
 
 import (
 	"github.com/go-redis/redis/v8"
-	"jianghai-hu/wallet-service/internal/common"
 )
 
-type DbConfig struct {
+type DBConfig struct {
 	Host     string
 	Port     string
 	Username string
@@ -13,7 +12,7 @@ type DbConfig struct {
 	DBName   string
 }
 
-var DefaultDBConfig = DbConfig{
+var DefaultDBConfig = DBConfig{
 	Host:     "localhost",
 	Port:     "5432",
 	Username: "jianghai",
@@ -26,5 +25,3 @@ var DefaultRedisConfig = &redis.Options{
 	Password: "",
 	DB:       0,
 }
-
-var DefaultMoneyActionServiceInitOption = common.MONEY_ACTION_SERVICE_INIT_OPTION_DB_TRANSACTION

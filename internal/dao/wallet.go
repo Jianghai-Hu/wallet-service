@@ -3,55 +3,54 @@ package dao
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"jianghai-hu/wallet-service/internal/common"
 	"jianghai-hu/wallet-service/internal/db"
 	"jianghai-hu/wallet-service/utils"
-	"time"
 )
 
 type IWalletDao interface {
-	CreateWallet(ctx context.Context, userId int32) error
-	FreezeBalance(ctx context.Context, userId, amount, actionType int) error
-	RollbackBalance(ctx context.Context, userId, amount, actionType int) error
-	ConfirmBalance(ctx context.Context, userId, amount, actionType int) error
+	CreateWallet(ctx context.Context, userID int32) error
+	FreezeBalance(ctx context.Context, userID, amount, actionType int) error
+	RollbackBalance(ctx context.Context, userID, amount, actionType int) error
+	ConfirmBalance(ctx context.Context, userID, amount, actionType int) error
 }
 
-func GetWalletDao() IWalletDao {
-	return newWalletDao()
+func GetWalletDao() *WalletDaoImpl {
+	return &WalletDaoImpl{}
 }
 
-var _ IWalletDao = (*walletDao)(nil)
+var _ IWalletDao = (*WalletDaoImpl)(nil)
 
-type walletDao struct{}
+type WalletDaoImpl struct{}
 
-func newWalletDao() *walletDao {
-	return &walletDao{}
-}
-
-func (dao *walletDao) CreateWallet(ctx context.Context, userId int32) error {
+func (dao *WalletDaoImpl) CreateWallet(ctx context.Context, userID int32) error {
 	timeNow := time.Now().UnixMicro()
 	sqlStr := `
 		INSERT INTO wallet_tab (
 			user_id, balance, frozen_balance, ext_info, create_time, update_time
 		) VALUES (%d, 0, 0, %s, %d, %d);
 	`
-	sqlStr = fmt.Sprintf(sqlStr, userId, common.DEFAULT_WALLET_EXT_INFO, timeNow, timeNow)
+	sqlStr = fmt.Sprintf(sqlStr, userID, common.DEFAULT_WALLET_EXT_INFO, timeNow, timeNow)
 
-	_, err := db.DBClient(ctx).Exec(sqlStr)
+	_, err := db.GetDBClient(ctx).Exec(sqlStr)
 	if err != nil {
 		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
 	}
+
 	return nil
 }
 
-func (dao *walletDao) FreezeBalance(ctx context.Context, userId, amount, actionType int) error {
+func (dao *WalletDaoImpl) FreezeBalance(ctx context.Context, userID, amount, actionType int) error {
 	if actionType == common.MONEY_ACTION_TYPE_MONEY_IN {
-		return dao.freezeIncome(ctx, userId, amount)
+		return dao.freezeIncome(ctx, userID, amount)
 	}
-	return dao.freezeDeduct(ctx, userId, amount)
+
+	return dao.freezeDeduct(ctx, userID, amount)
 }
 
-func (dao *walletDao) freezeIncome(ctx context.Context, userID int, amount int) error {
+func (dao *WalletDaoImpl) freezeIncome(ctx context.Context, userID int, amount int) error {
 	timeNow := time.Now().UnixMicro()
 	sqlStr := `
 		UPDATE wallet_tab 
@@ -60,14 +59,21 @@ func (dao *walletDao) freezeIncome(ctx context.Context, userID int, amount int) 
 	`
 	sqlStr = fmt.Sprintf(sqlStr, amount, timeNow, userID)
 
-	_, err := db.DBClient(ctx).Exec(sqlStr)
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
 	if err != nil {
 		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
 	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return utils.NewMyError(common.Constant_ERROR_PARAM,
+			fmt.Sprintf("freezeDeduct failed|user_id:%d not exist", userID))
+	}
+
 	return nil
 }
 
-func (dao *walletDao) freezeDeduct(ctx context.Context, userID int, amount int) error {
+func (dao *WalletDaoImpl) freezeDeduct(ctx context.Context, userID int, amount int) error {
 	timeNow := time.Now().UnixMicro()
 	sqlStr := `
 		UPDATE wallet_tab 
@@ -76,7 +82,7 @@ func (dao *walletDao) freezeDeduct(ctx context.Context, userID int, amount int) 
 	`
 	sqlStr = fmt.Sprintf(sqlStr, amount, amount, timeNow, userID, amount)
 
-	result, err := db.DBClient(ctx).Exec(sqlStr)
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
 	if err != nil {
 		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
 	}
@@ -84,19 +90,21 @@ func (dao *walletDao) freezeDeduct(ctx context.Context, userID int, amount int) 
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return utils.NewMyError(common.Constant_ERROR_INSUFFIENT_BALANCE,
-			"freezeDeduct failed|insufficient balance")
+			fmt.Sprintf("freezeDeduct failed|insufficient balance|user_id:%d", userID))
 	}
+
 	return nil
 }
 
-func (dao *walletDao) RollbackBalance(ctx context.Context, userID int, amount, actionType int) error {
+func (dao *WalletDaoImpl) RollbackBalance(ctx context.Context, userID int, amount, actionType int) error {
 	if actionType == common.MONEY_ACTION_TYPE_MONEY_IN {
 		return dao.rollbackIncome(ctx, userID, amount)
 	}
+
 	return dao.rollbackDeduct(ctx, userID, amount)
 }
 
-func (dao *walletDao) rollbackIncome(ctx context.Context, userID int, amount int) error {
+func (dao *WalletDaoImpl) rollbackIncome(ctx context.Context, userID int, amount int) error {
 	timeNow := time.Now().UnixMicro()
 	sqlStr := `
 		UPDATE wallet_tab 
@@ -105,7 +113,7 @@ func (dao *walletDao) rollbackIncome(ctx context.Context, userID int, amount int
 	`
 	sqlStr = fmt.Sprintf(sqlStr, amount, timeNow, userID, amount)
 
-	result, err := db.DBClient(ctx).Exec(sqlStr)
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
 	if err != nil {
 		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
 	}
@@ -113,63 +121,67 @@ func (dao *walletDao) rollbackIncome(ctx context.Context, userID int, amount int
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
-			"rollbackIncome failed|insufficient frozen balance")
-	}
-	return err
-}
-
-func (dao *walletDao) rollbackDeduct(ctx context.Context, userID int, amount int) error {
-	timeNow := time.Now().UnixMicro()
-	sqlStr := `
-		UPDATE wallet_tab 
-		SET balance = balance + %d, frozen_balance = frozen_balance - %d, update_time = %d
-		WHERE user_id = %d and frozen_balance >= %d;
-	`
-	sqlStr = fmt.Sprintf(sqlStr, amount, amount, timeNow, userID, amount)
-
-	result, err := db.DBClient(ctx).Exec(sqlStr)
-	if err != nil {
-		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
+			fmt.Sprintf("rollbackIncome failed|insufficient frozen balance|userID:%d", userID))
 	}
 
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
-			"rollbackDeduct failed|insufficient frozen balance")
-	}
-	return err
-}
-
-func (dao *walletDao) ConfirmBalance(ctx context.Context, userID, amount, actionType int) error {
-	if actionType == common.MONEY_ACTION_TYPE_MONEY_IN {
-		return dao.confirmIncome(ctx, userID, amount)
-	}
-	return dao.confirmDeduct(ctx, userID, amount)
-}
-
-func (dao *walletDao) confirmIncome(ctx context.Context, userID, amount int) error {
-	timeNow := time.Now().UnixMicro()
-	sqlStr := `
-		UPDATE wallet_tab
-		SET balance = balance + %d, frozen_balance = frozen_balance - %d, update_time = %d
-		WHERE user_id = %d and frozen_balance >= %d;
-	`
-	sqlStr = fmt.Sprintf(sqlStr, amount, amount, timeNow, userID, amount)
-
-	result, err := db.DBClient(ctx).Exec(sqlStr)
-	if err != nil {
-		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
-	}
-
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
-			"confirmIncome failed|insufficient frozen balance")
-	}
 	return nil
 }
 
-func (dao *walletDao) confirmDeduct(ctx context.Context, userID, amount int) error {
+func (dao *WalletDaoImpl) rollbackDeduct(ctx context.Context, userID int, amount int) error {
+	timeNow := time.Now().UnixMicro()
+	sqlStr := `
+		UPDATE wallet_tab 
+		SET balance = balance + %d, frozen_balance = frozen_balance - %d, update_time = %d
+		WHERE user_id = %d and frozen_balance >= %d;
+	`
+	sqlStr = fmt.Sprintf(sqlStr, amount, amount, timeNow, userID, amount)
+
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
+	if err != nil {
+		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
+			fmt.Sprintf("rollbackDeduct failed|insufficient frozen balance|userID:%d", userID))
+	}
+
+	return nil
+}
+
+func (dao *WalletDaoImpl) ConfirmBalance(ctx context.Context, userID, amount, actionType int) error {
+	if actionType == common.MONEY_ACTION_TYPE_MONEY_IN {
+		return dao.confirmIncome(ctx, userID, amount)
+	}
+
+	return dao.confirmDeduct(ctx, userID, amount)
+}
+
+func (dao *WalletDaoImpl) confirmIncome(ctx context.Context, userID, amount int) error {
+	timeNow := time.Now().UnixMicro()
+	sqlStr := `
+		UPDATE wallet_tab
+		SET balance = balance + %d, frozen_balance = frozen_balance - %d, update_time = %d
+		WHERE user_id = %d and frozen_balance >= %d;
+	`
+	sqlStr = fmt.Sprintf(sqlStr, amount, amount, timeNow, userID, amount)
+
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
+	if err != nil {
+		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
+			fmt.Sprintf("confirmIncome failed|insufficient frozen balance|userID:%d", userID))
+	}
+
+	return nil
+}
+
+func (dao *WalletDaoImpl) confirmDeduct(ctx context.Context, userID, amount int) error {
 	timeNow := time.Now().UnixMicro()
 	sqlStr := `
 		UPDATE wallet_tab
@@ -178,7 +190,7 @@ func (dao *walletDao) confirmDeduct(ctx context.Context, userID, amount int) err
 	`
 	sqlStr = fmt.Sprintf(sqlStr, amount, timeNow, userID, amount)
 
-	result, err := db.DBClient(ctx).Exec(sqlStr)
+	result, err := db.GetDBClient(ctx).Exec(sqlStr)
 	if err != nil {
 		return utils.WrapMyError(common.Constant_ERROR_SERVICE_INTERNAL, err)
 	}
@@ -186,7 +198,8 @@ func (dao *walletDao) confirmDeduct(ctx context.Context, userID, amount int) err
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return utils.NewMyError(common.Constant_ERROR_SERVICE_INTERNAL,
-			"confirmDeduct failed|insufficient frozen balance")
+			fmt.Sprintf("confirmDeduct failed|insufficient frozen balance|userID:%d", userID))
 	}
+
 	return nil
 }

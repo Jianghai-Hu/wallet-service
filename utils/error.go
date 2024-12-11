@@ -1,6 +1,10 @@
 package utils
 
-import "errors"
+import (
+	"errors"
+
+	"jianghai-hu/wallet-service/internal/common"
+)
 
 var _ error = (*myError)(nil)
 
@@ -17,17 +21,32 @@ func (e *myError) Code() int {
 	return e.code
 }
 
-func NewMyError(code int, msg string) *myError {
+func NewMyError(code int, msg string) error {
 	return &myError{code: code, msg: msg}
 }
 
-func WrapMyError(code int, err error) *myError {
+func WrapMyError(code int, err error) error {
 	if err == nil {
 		return nil
 	}
+
 	var e *myError
 	if errors.As(err, &e) {
 		return e
 	}
+
 	return NewMyError(code, err.Error())
+}
+
+func ResolveError(err error) (int, string) {
+	if err == nil {
+		return 0, ""
+	}
+
+	var e *myError
+	if errors.As(err, &e) {
+		return e.Code(), e.Error()
+	}
+
+	return common.Constant_ERROR_UNKNOW, err.Error()
 }
