@@ -1,9 +1,7 @@
 # wallet-service
 A take-home assignment from crypto.com.
 
-Can read the <b>Tech Design</b> doc of this demo first:
-
-https://drive.google.com/file/d/1rYJyj5thYjp5blvta3IW9eJhntUN7SIE/view?usp=drive_link
+Can read the <b>Tech Design</b> doc of this demo first: https://pinnate-writer-2a5.notion.site/Tech-Design-202412-Wallet-Service-Demo-89ccdc1cfd464e2db8ccc76421e9f7d5?pvs=4
 ## 1. Before You Run:
 ### Install PostgreSQL in Local Env(if you haven't done so)
 `brew install postgresql`
