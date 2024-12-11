@@ -2,7 +2,9 @@
 A take-home assignment from crypto.com.
 
 Can read the <b>Tech Design</b> doc of this demo first:
-## Before You Run:
+
+https://drive.google.com/file/d/1rYJyj5thYjp5blvta3IW9eJhntUN7SIE/view?usp=drive_link
+## 1. Before You Run:
 ### Install PostgreSQL in Local Env(if you haven't done so)
 `brew install postgresql`
 
@@ -22,7 +24,7 @@ var DefaultDBConfig = DBConfig{
 ```
 ### Create Table in the Database
 Can copy the sql in `sql/postgreSQL/create_table.sql`
-## Run the Demo:
+## 2. Run the Demo:
 <b>Check Makefile for Available Cmd</b>
 
 `sudo chmod 755 ./scripts/*`
@@ -48,7 +50,7 @@ Can copy the sql in `sql/postgreSQL/create_table.sql`
 <b>Find log files here:</b>
 
 `log/`
-## Note:
+## 3. Note:
 You can find the curl of provided APIs in <b>Tech Design</b> doc.
 
 Following APIs haven't been implemented in this demo yet:

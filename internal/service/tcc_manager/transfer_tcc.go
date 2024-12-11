@@ -46,7 +46,8 @@ func (manager *tccTransferManger) Try(ctx context.Context) error {
 	}
 
 	if !manager.moneyOutStatus.tryOnce {
-		manager.moneyOutStatus.tryOnce = true
+		// TODO: improve status detection here or the ACID of Try
+		manager.moneyOutStatus.tryOnce = true // In case part of the Try succeed, need to cancel even Try failed
 
 		err := manager.moneyOutTCCManger.Try(ctx)
 		if err != nil {
@@ -56,7 +57,8 @@ func (manager *tccTransferManger) Try(ctx context.Context) error {
 	}
 
 	if !manager.moneyInStatus.tryOnce {
-		manager.moneyInStatus.tryOnce = true
+		// TODO: improve status detection here or the ACID of Try
+		manager.moneyInStatus.tryOnce = true // In case part of the Try succeed, need to cancel even Try failed
 
 		err := manager.moneyInTCCManger.Try(ctx)
 		if err != nil {
